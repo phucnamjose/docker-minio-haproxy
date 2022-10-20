@@ -1,0 +1,89 @@
+version: '3.9'
+
+# Settings and configurations that are common for all containers
+x-minio-common: &minio-common
+  image: quay.io/minio/minio:RELEASE.2022-09-25T15-44-53Z
+  command: server --console-address ":9001" http://minio{1...4}/data{1...2}
+  expose:
+    - "9000"
+    - "9001"
+  # environment:
+    # MINIO_ROOT_USER: minioadmin
+    # MINIO_ROOT_PASSWORD: minioadmin
+  healthcheck:
+    test: ["CMD", "curl", "-I", "http://localhost:9000/minio/health/live"]
+    interval: 30s
+    timeout: 20s
+    retries: 3
+
+services: 
+  minio-gateway:
+    image: haproxy:lts-alpine3.16
+    user: root
+    ports:
+      - 9000:9000
+      - 9001:9001
+      - 8404:8404
+    volumes:
+      - ./:/usr/local/etc/haproxy:ro
+    networks:
+      backend:
+        ipv4_address: 10.11.0.2
+
+  minio1:
+    <<: *minio-common
+    hostname: minio1
+    volumes:
+      - data1-1:/data1
+      - data1-2:/data2
+    networks:
+      backend:
+        ipv4_address: 10.11.0.3
+
+  minio2:
+    <<: *minio-common
+    hostname: minio2
+    volumes:
+      - data2-1:/data1
+      - data2-2:/data2
+    networks:
+      backend:
+        ipv4_address: 10.11.0.4
+
+  minio3:
+    <<: *minio-common
+    hostname: minio3
+    volumes:
+      - data3-1:/data1
+      - data3-2:/data2
+    networks:
+      backend:
+        ipv4_address: 10.11.0.5
+
+  minio4:
+    <<: *minio-common
+    hostname: minio4
+    volumes:
+      - data4-1:/data1
+      - data4-2:/data2
+    networks:
+      backend:
+        ipv4_address: 10.11.0.6
+
+volumes:
+  data1-1:
+  data1-2:
+  data2-1:
+  data2-2:
+  data3-1:
+  data3-2:
+  data4-1:
+  data4-2:
+
+networks:
+  backend:
+    name: minio-haproxy
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.11.0.0/16
